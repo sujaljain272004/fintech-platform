@@ -26,6 +26,15 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       default: "",
+      index: true,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
     },
     dateOfBirth: {
       type: String,

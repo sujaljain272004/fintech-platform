@@ -33,6 +33,14 @@ const onboardingSessionSchema = new mongoose.Schema(
     },
     fullName: String,
     email: String,
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
+    },
     dateOfBirth: String,
     gender: String,
     addressLine: String,

@@ -2,7 +2,7 @@ const AIInsight = require("../models/AIInsight");
 const Transaction = require("../models/Transaction");
 const asyncHandler = require("../utils/asyncHandler");
 const AppError = require("../utils/AppError");
-const { generateFinancialInsight } = require("../services/openaiService");
+const { generateFinancialInsight } = require("../services/groqService");
 const { createNotification } = require("../services/notificationService");
 const { buildInsightAnalytics } = require("../utils/analytics");
 

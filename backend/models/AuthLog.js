@@ -15,7 +15,15 @@ const authLogSchema = new mongoose.Schema(
     },
     eventType: {
       type: String,
-      enum: ["login_success", "login_failure", "logout", "session_restore", "admin_access"],
+      enum: [
+        "otp_sent",
+        "otp_verified",
+        "login_success",
+        "login_failure",
+        "logout",
+        "session_restore",
+        "admin_access",
+      ],
       required: true,
     },
     status: {

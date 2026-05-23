@@ -17,7 +17,7 @@ const stepOrder = ["basic", "address", "financial", "kyc", "language", "review"]
 const OnboardingPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { onboarding, updateOnboarding, refreshSession } = useAuth();
+  const { completeAuthSession, onboarding, updateOnboarding } = useAuth();
   const [formData, setFormData] = useState(() => onboarding || {});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -88,8 +88,8 @@ const OnboardingPage = () => {
     setError("");
     try {
       const response = await completeOnboarding();
+      completeAuthSession(response);
       updateOnboarding(null);
-      await refreshSession();
       if (response.sessionState === "authenticated") {
         navigate("/dashboard", { replace: true });
       }
@@ -134,7 +134,7 @@ const OnboardingPage = () => {
             {currentStep === "basic" ? (
               <>
                 <input className="field-input" value={formData.fullName || ""} onChange={(e) => updateField("fullName", e.target.value)} placeholder={t("fullName")} />
-                <input className="field-input" value={formData.email || ""} onChange={(e) => updateField("email", e.target.value)} placeholder={t("email")} />
+                <input className="field-input" value={formData.email || ""} onChange={(e) => updateField("email", e.target.value)} placeholder={t("email")} disabled={onboarding?.emailVerified} />
                 <input className="field-input" type="date" value={formData.dateOfBirth || ""} onChange={(e) => updateField("dateOfBirth", e.target.value)} />
                 <select className="field-input" value={formData.gender || ""} onChange={(e) => updateField("gender", e.target.value)}>
                   <option value="">{t("gender")}</option>

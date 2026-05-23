@@ -43,7 +43,10 @@ const getActiveOnboardingSession = async (phoneNumber, session = null) => {
   );
 };
 
-const createOrResumeOnboardingSession = async ({ phoneNumber, preferredLanguage = "en" }, session = null) => {
+const createOrResumeOnboardingSession = async (
+  { phoneNumber, email = "", preferredLanguage = "en" },
+  session = null
+) => {
   const normalizedPhoneNumber = assertValidInternationalPhone(phoneNumber);
   let onboardingSession = await getActiveOnboardingSession(normalizedPhoneNumber, session);
 
@@ -52,6 +55,9 @@ const createOrResumeOnboardingSession = async ({ phoneNumber, preferredLanguage 
       [
         {
           phoneNumber: normalizedPhoneNumber,
+          email,
+          emailVerified: Boolean(email),
+          emailVerifiedAt: email ? new Date() : null,
           firebaseUid: phoneToSyntheticUid(normalizedPhoneNumber),
           preferredLanguage,
           phoneVerified: true,
@@ -64,6 +70,11 @@ const createOrResumeOnboardingSession = async ({ phoneNumber, preferredLanguage 
     );
     onboardingSession = createdSession;
   } else {
+    if (email) {
+      onboardingSession.email = email;
+      onboardingSession.emailVerified = true;
+      onboardingSession.emailVerifiedAt = onboardingSession.emailVerifiedAt || new Date();
+    }
     onboardingSession.preferredLanguage = preferredLanguage || onboardingSession.preferredLanguage;
     await onboardingSession.save(session ? { session } : undefined);
   }
@@ -75,6 +86,7 @@ const buildOnboardingPayload = (onboardingSession) => ({
   phoneNumber: onboardingSession.phoneNumber,
   fullName: onboardingSession.fullName || "",
   email: onboardingSession.email || "",
+  emailVerified: Boolean(onboardingSession.emailVerified),
   dateOfBirth: onboardingSession.dateOfBirth || "",
   gender: onboardingSession.gender || "",
   addressLine: onboardingSession.addressLine || "",
@@ -144,6 +156,8 @@ const createUserAndWalletFromOnboarding = async (onboardingSession, session = nu
         fullName: onboardingSession.fullName,
         phoneNumber: normalizedPhoneNumber,
         email: onboardingSession.email || "",
+        emailVerified: Boolean(onboardingSession.emailVerified || onboardingSession.email),
+        emailVerifiedAt: onboardingSession.emailVerifiedAt || new Date(),
         dateOfBirth: onboardingSession.dateOfBirth || "",
         gender: onboardingSession.gender || "",
         address: {

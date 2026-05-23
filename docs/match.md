@@ -17,7 +17,7 @@ The current repository is a solid hackathon MVP, but it does not fully match the
 | Recipient lookup by phone | Present | Phone-based recipient preview is supported. |
 | Transaction history | Present | User can view sent and received transactions. |
 | Blockchain-style verification | Present | Each transaction stores a hash chain entry and the UI exposes verification. |
-| AI insight generation | Present | Insights are generated with OpenAI fallback behavior. |
+| AI insight generation | Present | Insights are generated with Groq-backed dynamic analysis and fallback behavior. |
 | Notifications | Present | Transfers and AI insight events create in-app notifications. |
 | Multilingual UI | Present | English, Hindi, and Marathi are available. |
 | Mobile-first navigation | Present | Bottom navigation and responsive cards are implemented. |
@@ -27,14 +27,14 @@ The current repository is a solid hackathon MVP, but it does not fully match the
 
 | SRS Area | Status | Why It Is Partial |
 |---|---|---|
-| FR-1 Authentication | Partial | The app uses phone-session login, not Firebase OTP plus password, JWT access tokens, refresh tokens, logout-all, device checks, or lockout policies. |
+| FR-1 Authentication | Partial | The app now uses email OTP plus JWT access/refresh tokens, but Firebase Phone OTP, password auth, logout-all, device checks, and lockout policies are still not fully implemented. |
 | FR-2 Wallet Management | Partial | Wallets exist and balances update atomically, but only one currency is used in practice and there is no FX display layer. |
 | FR-3 Transactions | Partial | Domestic phone-to-phone transfer works, but paginated history, status lifecycle, reversal saga, and email recipient support are not implemented. |
 | FR-4 AI Recommendation Engine | Partial | AI insights exist, but category breakdowns, 24-hour cache guarantees, anonymized payload shaping, micro-investment suggestions, and savings goals are incomplete or missing. |
 | FR-5 User Management | Partial | Basic profile data exists, but password change, KYC document upload, beneficiary management, and account deactivation are missing. |
 | FR-6 Language Management | Partial | Only English, Hindi, and Marathi are available; browser locale detection, Arabic/Urdu RTL, and the full 10-language set are missing. |
 | FR-7 Notifications | Partial | In-app notifications exist, but push notifications and notification preferences are not implemented. |
-| FR-8 Security | Partial | JWT-style protection is not the current auth model; rate limiting, HTTPS redirect, auth-event logging, and lockout enforcement are incomplete. |
+| FR-8 Security | Partial | JWT bearer protection and auth-event logging are present, but rate limiting, HTTPS redirect, refresh-token revocation, device checks, and lockout enforcement are incomplete. |
 | FR-9 Admin Functionalities | Partial | No admin dashboard or admin moderation tools exist in the current MVP. |
 | UI/UX Requirements | Partial | The interface is mobile-first and visually improved, but accessibility, voice input, QR sharing, simplified mode, and left-sidebar desktop navigation are not complete. |
 | Cloud & Deployment | Partial | The repo includes deployment support, but it does not exactly mirror the SRS stack naming and hosting combination. |
@@ -81,7 +81,7 @@ The current repository is a solid hackathon MVP, but it does not fully match the
 | Test Case | Gap |
 |---|---|
 | TC-AI-001 AI insights for user with 5+ transactions | Insight generation exists, but the workbook expects a richer 8-category pie chart and more structured recommendation output. |
-| TC-SEC-002 Access protected endpoint without JWT | The current app uses a phone-header auth model, not the JWT bearer-token model expected in the test cases. |
+| TC-SEC-002 Access protected endpoint without JWT | Protected endpoints now use JWT bearer tokens; deeper refresh-token revocation and lockout behavior are still missing. |
 | TC-API-002 All protected endpoints require authorization header | Protection exists, but the auth mechanism does not match the workbook's JWT bearer token pattern. |
 | TC-EDGE-005 Transaction history pagination boundary | Current history is not paginated. |
 | TC-REG-001 / TC-REG-002 / TC-REG-003 | Regression scenarios are not fully represented because several target features do not exist yet. |
@@ -103,7 +103,7 @@ The strongest matches are wallet creation, wallet-to-wallet transfers, transacti
 
 ## Recommended Next Implementation Order
 
-1. Replace the phone-session auth model with the SRS auth model, or clearly document the demo deviation.
+1. Harden the new email OTP + JWT auth model with rate limiting, refresh-token revocation, device checks, and lockout handling.
 2. Add the missing security controls: rate limiting, auth event logging, lockout, and HTTPS enforcement.
 3. Expand the insights page to cover the workbook expectations: category pie chart, trend chart, and savings recommendation cards.
 4. Add pagination/filtering to transaction history and a richer transfer status model.

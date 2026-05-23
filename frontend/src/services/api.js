@@ -1,6 +1,7 @@
 import axios from "axios";
 
-const PHONE_AUTH_STORAGE_KEY = "finlink-phone-session";
+const AUTH_STORAGE_KEY = "finlink-auth-session";
+const LEGACY_PHONE_AUTH_STORAGE_KEY = "finlink-phone-session";
 const isLocalhost =
   typeof window !== "undefined" &&
   (window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1");
@@ -11,16 +12,19 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-  const storedAuth = localStorage.getItem(PHONE_AUTH_STORAGE_KEY);
+  const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
 
   if (storedAuth) {
     try {
       const parsedAuth = JSON.parse(storedAuth);
-      if (parsedAuth?.phoneNumber) {
-        config.headers["x-user-phone"] = parsedAuth.phoneNumber;
+      if (parsedAuth?.accessToken) {
+        config.headers.Authorization = `Bearer ${parsedAuth.accessToken}`;
+      } else if (parsedAuth?.onboardingToken) {
+        config.headers.Authorization = `Bearer ${parsedAuth.onboardingToken}`;
       }
     } catch (error) {
-      localStorage.removeItem(PHONE_AUTH_STORAGE_KEY);
+      localStorage.removeItem(AUTH_STORAGE_KEY);
+      localStorage.removeItem(LEGACY_PHONE_AUTH_STORAGE_KEY);
     }
   }
 
@@ -29,7 +33,32 @@ api.interceptors.request.use((config) => {
 
 api.interceptors.response.use(
   (response) => response,
-  (error) => {
+  async (error) => {
+    const originalRequest = error.config;
+
+    if (error.response?.status === 401 && !originalRequest?._retry) {
+      const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
+
+      if (storedAuth) {
+        try {
+          const parsedAuth = JSON.parse(storedAuth);
+          if (parsedAuth?.refreshToken) {
+            originalRequest._retry = true;
+            const refreshResponse = await axios.post(`${defaultBaseURL}/auth/refresh`, {
+              refreshToken: parsedAuth.refreshToken,
+            });
+            const nextTokens = refreshResponse.data.data;
+            const nextAuth = { ...parsedAuth, ...nextTokens };
+            localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(nextAuth));
+            originalRequest.headers.Authorization = `Bearer ${nextTokens.accessToken}`;
+            return api(originalRequest);
+          }
+        } catch (refreshError) {
+          localStorage.removeItem(AUTH_STORAGE_KEY);
+        }
+      }
+    }
+
     const message = error.response?.data?.message || error.message || "Request failed.";
     return Promise.reject(new Error(message));
   }

@@ -16,12 +16,13 @@ export const resources = {
       getStartedBody:
         "Start with phone verification, complete your onboarding and KYC steps, then activate a persistent wallet that other users can find by phone number.",
       otpBillingNotice:
-        "Firebase Phone OTP is prepared in the architecture, but this project currently runs in phone-session verification mode because the Firebase Spark project blocks Phone Auth without billing.",
+        "Firebase Phone OTP is prepared in the architecture, but this project currently uses email OTP verification because the Firebase Spark project blocks Phone Auth without billing.",
       getStarted: "Get Started",
       tagline: "Zero-fee money transfers for people who keep families moving.",
       authTitle: "Phone sign in",
       authSubtitle: "Use your international phone number to open the same wallet across sessions.",
       fullName: "Full name",
+      email: "Email",
       phoneNumber: "Phone number",
       signIn: "Sign in",
       signingIn: "Signing in...",
@@ -129,12 +130,13 @@ export const resources = {
       getStartedBody:
         "फोन सत्यापन से शुरू करें, ऑनबोर्डिंग और KYC पूरा करें, फिर ऐसा स्थायी वॉलेट सक्रिय करें जिसे दूसरे उपयोगकर्ता फोन नंबर से खोज सकें।",
       otpBillingNotice:
-        "Firebase Phone OTP आर्किटेक्चर में तैयार है, लेकिन Spark प्रोजेक्ट में बिलिंग न होने के कारण अभी फोन-सेशन सत्यापन मोड उपयोग हो रहा है।",
+        "Firebase Phone OTP आर्किटेक्चर में तैयार है, लेकिन Spark प्रोजेक्ट में बिलिंग न होने के कारण अभी ईमेल OTP सत्यापन उपयोग हो रहा है।",
       getStarted: "शुरू करें",
       tagline: "परिवार तक बिना शुल्क के सुरक्षित पैसे पहुंचाने वाला वॉलेट।",
       authTitle: "फोन साइन इन",
       authSubtitle: "एक ही वॉलेट को हर बार खोलने के लिए अंतरराष्ट्रीय फोन नंबर का उपयोग करें।",
       fullName: "पूरा नाम",
+      email: "ईमेल",
       phoneNumber: "फोन नंबर",
       signIn: "साइन इन",
       signingIn: "साइन इन हो रहा है...",
@@ -242,12 +244,13 @@ export const resources = {
       getStartedBody:
         "फोन पडताळणीने सुरुवात करा, ऑनबोर्डिंग आणि KYC पूर्ण करा, आणि मग असा कायमस्वरूपी वॉलेट सक्रिय करा जो इतरांना फोन नंबरने सापडेल.",
       otpBillingNotice:
-        "Firebase Phone OTP आर्किटेक्चरमध्ये तयार आहे, पण Spark प्रोजेक्टवर बिलिंग नसल्यामुळे सध्या फोन-सेशन पडताळणी मोड वापरला जातो.",
+        "Firebase Phone OTP आर्किटेक्चरमध्ये तयार आहे, पण Spark प्रोजेक्टवर बिलिंग नसल्यामुळे सध्या ईमेल OTP पडताळणी वापरली जाते.",
       getStarted: "सुरू करा",
       tagline: "कुटुंबापर्यंत शून्य शुल्कात सुरक्षित पैसे पोहोचवणारे वॉलेट.",
       authTitle: "फोन साइन इन",
       authSubtitle: "प्रत्येक सत्रात तेच वॉलेट उघडण्यासाठी तुमचा आंतरराष्ट्रीय फोन नंबर वापरा.",
       fullName: "पूर्ण नाव",
+      email: "ईमेल",
       phoneNumber: "फोन नंबर",
       signIn: "साइन इन",
       signingIn: "साइन इन सुरू आहे...",

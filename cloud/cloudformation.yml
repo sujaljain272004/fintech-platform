@@ -27,13 +27,32 @@ Parameters:
     Type: String
     NoEcho: true
     Description: JWT signing secret for the backend.
-  OpenAiApiKey:
+  GroqApiKey:
     Type: String
     NoEcho: true
-    Description: OpenAI API key for insight generation.
-  OpenAiModel:
+    Description: Groq API key for insight generation.
+  GroqModel:
     Type: String
-    Default: gpt-4o-mini
+    Default: llama-3.3-70b-versatile
+  GroqBaseUrl:
+    Type: String
+    Default: https://api.groq.com/openai/v1
+  SmtpHost:
+    Type: String
+    Default: smtp.gmail.com
+  SmtpPort:
+    Type: Number
+    Default: 587
+  SmtpUser:
+    Type: String
+    Description: SMTP username used for email OTP delivery.
+  SmtpPass:
+    Type: String
+    NoEcho: true
+    Description: SMTP password or app password used for email OTP delivery.
+  EmailFrom:
+    Type: String
+    Description: From address used for FinLink OTP emails.
 
 Resources:
   AppVpc:
@@ -313,10 +332,22 @@ Resources:
           Value: !Ref MongoDbUri
         - Name: JWT_SECRET
           Value: !Ref JwtSecret
-        - Name: OPENAI_API_KEY
-          Value: !Ref OpenAiApiKey
-        - Name: OPENAI_MODEL
-          Value: !Ref OpenAiModel
+        - Name: GROQ_API_KEY
+          Value: !Ref GroqApiKey
+        - Name: GROQ_MODEL
+          Value: !Ref GroqModel
+        - Name: GROQ_BASE_URL
+          Value: !Ref GroqBaseUrl
+        - Name: SMTP_HOST
+          Value: !Ref SmtpHost
+        - Name: SMTP_PORT
+          Value: !Ref SmtpPort
+        - Name: SMTP_USER
+          Value: !Ref SmtpUser
+        - Name: SMTP_PASS
+          Value: !Ref SmtpPass
+        - Name: EMAIL_FROM
+          Value: !Ref EmailFrom
         LogConfiguration:
           LogDriver: awslogs
           Options:
