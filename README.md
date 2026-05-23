@@ -164,6 +164,12 @@ The backend uses OpenAI via the Responses API with a strict JSON schema response
 4. Make sure MongoDB Atlas allows access from the deployment environment.
 5. Deploy.
 
+### AWS CloudFront + ECS option
+
+The repo now also includes [cloud/cloudformation.yml](cloud/cloudformation.yml) for an AWS deployment that fronts the SPA with S3 + CloudFront and runs the backend on ECS Fargate behind an Application Load Balancer.
+
+The stack expects a backend container image URI plus the runtime secrets as parameters. After the stack creates the frontend bucket, upload `frontend/dist` to the S3 bucket and use the CloudFront URL output as the app entrypoint.
+
 ## Verification completed in this workspace
 
 - Frontend production build passed with Vite after the phone-session rewrite.

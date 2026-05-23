@@ -83,6 +83,12 @@ const userSchema = new mongoose.Schema(
       type: String,
       default: "#14b8a6",
     },
+    role: {
+      type: String,
+      enum: ["USER", "ADMIN"],
+      default: "USER",
+      index: true,
+    },
     kycStatus: {
       type: String,
       enum: ["pending", "under_review", "verified", "rejected"],

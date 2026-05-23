@@ -1,0 +1,442 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: FinLink full-stack deployment with CloudFront, S3, ALB, ECS Fargate, and MongoDB Atlas-backed API.
+
+Parameters:
+  ProjectName:
+    Type: String
+    Default: FinLink
+  EnvironmentName:
+    Type: String
+    Default: prod
+  BackendImageUri:
+    Type: String
+    Description: Container image URI for the backend service, such as an ECR image URI.
+  DesiredCount:
+    Type: Number
+    Default: 1
+    MinValue: 1
+    MaxValue: 4
+  BackendContainerPort:
+    Type: Number
+    Default: 5000
+  MongoDbUri:
+    Type: String
+    NoEcho: true
+    Description: MongoDB Atlas connection string used by the backend.
+  JwtSecret:
+    Type: String
+    NoEcho: true
+    Description: JWT signing secret for the backend.
+  OpenAiApiKey:
+    Type: String
+    NoEcho: true
+    Description: OpenAI API key for insight generation.
+  OpenAiModel:
+    Type: String
+    Default: gpt-4o-mini
+
+Resources:
+  AppVpc:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: 10.20.0.0/16
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+      - Key: Name
+        Value: !Sub "${ProjectName}-${EnvironmentName}-vpc"
+
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+      - Key: Name
+        Value: !Sub "${ProjectName}-${EnvironmentName}-igw"
+
+  VpcGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref AppVpc
+
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref AppVpc
+
+  PublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: VpcGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnetA:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVpc
+      AvailabilityZone: !Select [ 0, !GetAZs "" ]
+      CidrBlock: 10.20.0.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: !Sub "${ProjectName}-${EnvironmentName}-public-a"
+
+  PublicSubnetB:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref AppVpc
+      AvailabilityZone: !Select [ 1, !GetAZs "" ]
+      CidrBlock: 10.20.1.0/24
+      MapPublicIpOnLaunch: true
+      Tags:
+      - Key: Name
+        Value: !Sub "${ProjectName}-${EnvironmentName}-public-b"
+
+  PublicSubnetAAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetA
+
+  PublicSubnetBAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnetB
+
+  AlbSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow public HTTP traffic to the application load balancer.
+      VpcId: !Ref AppVpc
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: 80
+        ToPort: 80
+        CidrIp: 0.0.0.0/0
+      Tags:
+      - Key: Name
+        Value: !Sub "${ProjectName}-${EnvironmentName}-alb-sg"
+
+  ServiceSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: Allow ALB traffic into the backend service.
+      VpcId: !Ref AppVpc
+      SecurityGroupIngress:
+      - IpProtocol: tcp
+        FromPort: !Ref BackendContainerPort
+        ToPort: !Ref BackendContainerPort
+        SourceSecurityGroupId: !Ref AlbSecurityGroup
+      Tags:
+      - Key: Name
+        Value: !Sub "${ProjectName}-${EnvironmentName}-service-sg"
+
+  FrontendBucket:
+    Type: AWS::S3::Bucket
+    Properties:
+      BucketName: !Sub "${AWS::StackName}-${AWS::AccountId}-frontend"
+      VersioningConfiguration:
+        Status: Enabled
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+
+  FrontendOriginAccessControl:
+    Type: AWS::CloudFront::OriginAccessControl
+    Properties:
+      OriginAccessControlConfig:
+        Name: !Sub "${ProjectName}-${EnvironmentName}-oac"
+        Description: OAC for FinLink frontend bucket.
+        OriginAccessControlOriginType: s3
+        SigningBehavior: always
+        SigningProtocol: sigv4
+
+  StaticCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${ProjectName}-${EnvironmentName}-static-cache"
+        DefaultTTL: 86400
+        MaxTTL: 31536000
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+
+  ApiCachePolicy:
+    Type: AWS::CloudFront::CachePolicy
+    Properties:
+      CachePolicyConfig:
+        Name: !Sub "${ProjectName}-${EnvironmentName}-api-cache"
+        DefaultTTL: 0
+        MaxTTL: 0
+        MinTTL: 0
+        ParametersInCacheKeyAndForwardedToOrigin:
+          CookiesConfig:
+            CookieBehavior: none
+          HeadersConfig:
+            HeaderBehavior: none
+          QueryStringsConfig:
+            QueryStringBehavior: none
+          EnableAcceptEncodingBrotli: true
+          EnableAcceptEncodingGzip: true
+
+  ApiOriginRequestPolicy:
+    Type: AWS::CloudFront::OriginRequestPolicy
+    Properties:
+      OriginRequestPolicyConfig:
+        Name: !Sub "${ProjectName}-${EnvironmentName}-api-origin-request"
+        CookiesConfig:
+          CookieBehavior: all
+        HeadersConfig:
+          HeaderBehavior: allViewerExceptHostHeader
+        QueryStringsConfig:
+          QueryStringBehavior: all
+
+  BackendLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Type: application
+      Scheme: internet-facing
+      SecurityGroups:
+      - !Ref AlbSecurityGroup
+      Subnets:
+      - !Ref PublicSubnetA
+      - !Ref PublicSubnetB
+
+  BackendTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      VpcId: !Ref AppVpc
+      TargetType: ip
+      Port: !Ref BackendContainerPort
+      Protocol: HTTP
+      HealthCheckProtocol: HTTP
+      HealthCheckPath: /api/health
+      Matcher:
+        HttpCode: 200
+      TargetGroupAttributes:
+      - Key: deregistration_delay.timeout_seconds
+        Value: "15"
+
+  BackendListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref BackendLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+      - Type: forward
+        TargetGroupArn: !Ref BackendTargetGroup
+
+  Cluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${ProjectName}-${EnvironmentName}-cluster"
+
+  BackendLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Sub "/ecs/${ProjectName}-${EnvironmentName}"
+      RetentionInDays: 14
+
+  EcrRepository:
+    Type: AWS::ECR::Repository
+    Properties:
+      RepositoryName: !Sub "${ProjectName}-${EnvironmentName}-backend"
+      ImageScanningConfiguration:
+        ScanOnPush: true
+      EncryptionConfiguration:
+        EncryptionType: AES256
+
+  TaskExecutionRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+      ManagedPolicyArns:
+      - arn:aws:iam::aws:policy/service-role/AmazonECSTaskExecutionRolePolicy
+
+  TaskRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Effect: Allow
+          Principal:
+            Service: ecs-tasks.amazonaws.com
+          Action: sts:AssumeRole
+
+  TaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${ProjectName}-${EnvironmentName}-backend"
+      Cpu: "512"
+      Memory: "1024"
+      NetworkMode: awsvpc
+      RequiresCompatibilities:
+      - FARGATE
+      ExecutionRoleArn: !GetAtt TaskExecutionRole.Arn
+      TaskRoleArn: !GetAtt TaskRole.Arn
+      ContainerDefinitions:
+      - Name: backend
+        Image: !Ref BackendImageUri
+        Essential: true
+        PortMappings:
+        - ContainerPort: !Ref BackendContainerPort
+          Protocol: tcp
+        Environment:
+        - Name: PORT
+          Value: !Ref BackendContainerPort
+        - Name: NODE_ENV
+          Value: production
+        - Name: FRONTEND_URLS
+          Value: !Sub "https://${FrontendDistribution.DomainName}"
+        - Name: MONGODB_URI
+          Value: !Ref MongoDbUri
+        - Name: JWT_SECRET
+          Value: !Ref JwtSecret
+        - Name: OPENAI_API_KEY
+          Value: !Ref OpenAiApiKey
+        - Name: OPENAI_MODEL
+          Value: !Ref OpenAiModel
+        LogConfiguration:
+          LogDriver: awslogs
+          Options:
+            awslogs-group: !Ref BackendLogGroup
+            awslogs-region: !Ref AWS::Region
+            awslogs-stream-prefix: backend
+
+  BackendService:
+    Type: AWS::ECS::Service
+    DependsOn:
+    - BackendListener
+    - FrontendDistribution
+    Properties:
+      Cluster: !Ref Cluster
+      DesiredCount: !Ref DesiredCount
+      LaunchType: FARGATE
+      TaskDefinition: !Ref TaskDefinition
+      HealthCheckGracePeriodSeconds: 30
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          AssignPublicIp: ENABLED
+          SecurityGroups:
+          - !Ref ServiceSecurityGroup
+          Subnets:
+          - !Ref PublicSubnetA
+          - !Ref PublicSubnetB
+      LoadBalancers:
+      - ContainerName: backend
+        ContainerPort: !Ref BackendContainerPort
+        TargetGroupArn: !Ref BackendTargetGroup
+
+  FrontendBucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref FrontendBucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+        - Sid: AllowCloudFrontRead
+          Effect: Allow
+          Principal:
+            Service: cloudfront.amazonaws.com
+          Action: s3:GetObject
+          Resource: !Sub "arn:aws:s3:::${FrontendBucket}/*"
+          Condition:
+            StringEquals:
+              AWS:SourceArn: !Sub "arn:aws:cloudfront::${AWS::AccountId}:distribution/${FrontendDistribution}"
+
+  FrontendDistribution:
+    Type: AWS::CloudFront::Distribution
+    Properties:
+      DistributionConfig:
+        Enabled: true
+        Comment: !Sub "${ProjectName} ${EnvironmentName} frontend and API"
+        DefaultRootObject: index.html
+        HttpVersion: http2and3
+        IPV6Enabled: true
+        Origins:
+        - Id: FrontendS3Origin
+          DomainName: !GetAtt FrontendBucket.RegionalDomainName
+          OriginAccessControlId: !GetAtt FrontendOriginAccessControl.Id
+          S3OriginConfig: {}
+        - Id: BackendAlbOrigin
+          DomainName: !GetAtt BackendLoadBalancer.DNSName
+          CustomOriginConfig:
+            HTTPPort: 80
+            HTTPSPort: 443
+            OriginProtocolPolicy: http-only
+            OriginSSLProtocols:
+            - TLSv1.2
+        DefaultCacheBehavior:
+          TargetOriginId: FrontendS3Origin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods:
+          - GET
+          - HEAD
+          - OPTIONS
+          CachedMethods:
+          - GET
+          - HEAD
+          CachePolicyId: !Ref StaticCachePolicy
+        CacheBehaviors:
+        - PathPattern: /api/*
+          TargetOriginId: BackendAlbOrigin
+          ViewerProtocolPolicy: redirect-to-https
+          Compress: true
+          AllowedMethods:
+          - GET
+          - HEAD
+          - OPTIONS
+          - PUT
+          - POST
+          - PATCH
+          - DELETE
+          CachedMethods:
+          - GET
+          - HEAD
+          CachePolicyId: !Ref ApiCachePolicy
+          OriginRequestPolicyId: !Ref ApiOriginRequestPolicy
+        CustomErrorResponses:
+        - ErrorCode: 403
+          ResponseCode: 200
+          ResponsePagePath: /index.html
+        - ErrorCode: 404
+          ResponseCode: 200
+          ResponsePagePath: /index.html
+        ViewerCertificate:
+          CloudFrontDefaultCertificate: true
+
+Outputs:
+  FrontendBucketName:
+    Value: !Ref FrontendBucket
+  FrontendDistributionDomainName:
+    Value: !GetAtt FrontendDistribution.DomainName
+  FrontendAppUrl:
+    Value: !Sub "https://${FrontendDistribution.DomainName}"
+  BackendLoadBalancerDnsName:
+    Value: !GetAtt BackendLoadBalancer.DNSName
+  BackendApiUrl:
+    Value: !Sub "https://${FrontendDistribution.DomainName}/api"
+  EcrRepositoryUri:
+    Value: !GetAtt EcrRepository.RepositoryUri

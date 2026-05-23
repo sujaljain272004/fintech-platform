@@ -1,8 +1,12 @@
-import { useEffect, useState } from "react";
+import { Suspense, lazy, useEffect, useState } from "react";
 import { Sparkles } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import InsightCard from "../components/InsightCard";
 import { generateInsight, getLatestInsight } from "../services/insightService";
+import PageTransition from "../components/ui/PageTransition";
+import { ChartSkeleton, EmptyState } from "../components/ui/StateBlocks";
+
+const AnalyticsChartSuite = lazy(() => import("../components/AnalyticsChartSuite"));
 
 const InsightsPage = () => {
   const { t } = useTranslation();
@@ -42,10 +46,11 @@ const InsightsPage = () => {
   };
 
   return (
-    <div className="space-y-5">
-      <div className="glass-panel flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+    <PageTransition className="space-y-5">
+      <div className="topbar-shell">
         <div>
-          <h2 className="section-title">{t("insights")}</h2>
+          <p className="page-kicker">{t("insights")}</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{t("insights")}</h2>
           <p className="mt-2 max-w-2xl text-sm leading-6 text-slate-500 dark:text-slate-400">
             Turn transaction history into simple savings guidance, risk awareness, and expense breakdowns that are easier to act on.
           </p>
@@ -56,10 +61,19 @@ const InsightsPage = () => {
         </button>
       </div>
 
-      {loading ? <div className="glass-panel text-sm text-slate-500 dark:text-slate-400">{t("loading")}</div> : null}
-      {error ? <div className="glass-panel text-sm text-rose-600">{error}</div> : null}
-      {!loading ? <InsightCard insight={insight} /> : null}
-    </div>
+      {loading ? <ChartSkeleton /> : null}
+      {error ? (
+        <EmptyState title="Insights unavailable" description={error} />
+      ) : null}
+      {!loading && !error ? (
+        <div className="space-y-6">
+          <Suspense fallback={<div className="glass-panel text-sm text-slate-500 dark:text-slate-400">Loading analytics charts...</div>}>
+            <AnalyticsChartSuite analytics={insight?.analytics} currency="INR" />
+          </Suspense>
+          <InsightCard insight={insight} />
+        </div>
+      ) : null}
+    </PageTransition>
   );
 };
 

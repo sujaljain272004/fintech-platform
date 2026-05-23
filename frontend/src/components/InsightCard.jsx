@@ -6,7 +6,7 @@ const InsightCard = ({ insight }) => {
 
   if (!insight) {
     return (
-      <div className="soft-panel">
+      <div className="surface-stack">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           No AI insight generated yet. Tap the button below to create one from your wallet activity.
         </p>
@@ -15,7 +15,7 @@ const InsightCard = ({ insight }) => {
   }
 
   return (
-    <div className="glass-panel">
+    <div className="page-banner">
       <div className="mb-4 flex items-center gap-3">
         <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-600 dark:text-teal-300">
           <Sparkles size={22} />
@@ -29,14 +29,14 @@ const InsightCard = ({ insight }) => {
       <p className="text-sm leading-7 text-slate-600 dark:text-slate-300">{insight.summary}</p>
 
       <div className="mt-5 grid gap-4 md:grid-cols-2">
-        <div className="soft-panel">
+        <div className="metric-tile">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
             {t("healthScore")}
           </p>
           <p className="mt-2 text-3xl font-extrabold">{insight.financialHealthScore}/100</p>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{insight.cashFlowStatus}</p>
         </div>
-        <div className="soft-panel">
+        <div className="metric-tile">
           <p className="text-xs font-bold uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
             {t("savingsTip")}
           </p>
@@ -45,7 +45,7 @@ const InsightCard = ({ insight }) => {
       </div>
 
       <div className="mt-5 grid gap-4 lg:grid-cols-2">
-        <div className="soft-panel">
+        <div className="metric-tile">
           <h4 className="font-bold">{t("categories")}</h4>
           <div className="mt-4 space-y-3">
             {insight.categories?.map((category) => (
@@ -65,7 +65,7 @@ const InsightCard = ({ insight }) => {
           </div>
         </div>
 
-        <div className="soft-panel">
+        <div className="metric-tile">
           <h4 className="font-bold">{t("recommendations")}</h4>
           <div className="mt-4 space-y-3 text-sm leading-7 text-slate-600 dark:text-slate-300">
             <p>{insight.spendingPattern}</p>

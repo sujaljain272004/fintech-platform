@@ -2,11 +2,15 @@ const mongoose = require("mongoose");
 const Notification = require("../models/Notification");
 const asyncHandler = require("../utils/asyncHandler");
 const AppError = require("../utils/AppError");
+const env = require("../config/env");
 const {
   buildOnboardingPayload,
   createOrResumeOnboardingSession,
   findUserWalletByPhone,
+  syncUserRoleFromConfig,
+  isAdminPhoneNumber,
 } = require("../services/userLifecycleService");
+const { createAuthLog } = require("../services/authLogService");
 
 const toAuthPayload = async (user, wallet) => {
   const unreadNotifications = await Notification.countDocuments({
@@ -20,6 +24,7 @@ const toAuthPayload = async (user, wallet) => {
       email: user.email,
       fullName: user.fullName,
       phoneNumber: user.phoneNumber,
+      role: user.role || "USER",
       preferredLanguage: user.preferredLanguage,
       currency: user.currency,
       avatarColor: user.avatarColor,
@@ -46,6 +51,15 @@ const loginWithPhone = asyncHandler(async (req, res) => {
 
   if (existingAccount) {
     const { user, wallet } = existingAccount;
+    await syncUserRoleFromConfig(user);
+    await createAuthLog({
+      user,
+      phoneNumber,
+      eventType: "login_success",
+      status: "success",
+      req,
+      metadata: { sessionState: "authenticated", role: user.role || "USER" },
+    });
     res.json({
       success: true,
       message: "Signed in successfully.",
@@ -77,6 +91,14 @@ const loginWithPhone = asyncHandler(async (req, res) => {
     await dbSession.endSession();
   }
 
+  await createAuthLog({
+    phoneNumber,
+    eventType: "login_success",
+    status: "info",
+    req,
+    metadata: { sessionState: "onboarding", role: isAdminPhoneNumber(phoneNumber) ? "ADMIN" : "USER" },
+  });
+
   res.json({
     success: true,
     message: "Phone verified. Complete onboarding to activate your wallet.",
@@ -90,6 +112,17 @@ const getSession = asyncHandler(async (req, res) => {
     throw new AppError("No synced FinLink profile found for this account yet.", 404);
   }
 
+  await syncUserRoleFromConfig(req.appUser);
+
+  await createAuthLog({
+    user: req.appUser,
+    phoneNumber: req.appUser.phoneNumber,
+    eventType: "session_restore",
+    status: "info",
+    req,
+    metadata: { role: req.appUser.role || "USER" },
+  });
+
   res.json({
     success: true,
     data: await toAuthPayload(req.appUser, req.appWallet),
@@ -98,6 +131,7 @@ const getSession = asyncHandler(async (req, res) => {
 
 const getAuthStatus = asyncHandler(async (req, res) => {
   if (req.appUser && req.appWallet) {
+    await syncUserRoleFromConfig(req.appUser);
     res.json({
       success: true,
       sessionState: "authenticated",

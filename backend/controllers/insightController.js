@@ -4,6 +4,7 @@ const asyncHandler = require("../utils/asyncHandler");
 const AppError = require("../utils/AppError");
 const { generateFinancialInsight } = require("../services/openaiService");
 const { createNotification } = require("../services/notificationService");
+const { buildInsightAnalytics } = require("../utils/analytics");
 
 const normalizeTransactions = (transactions, userId) =>
   transactions.map((transaction) => {
@@ -29,9 +30,31 @@ const getLatestInsight = asyncHandler(async (req, res) => {
     .sort({ createdAt: -1 })
     .lean();
 
+  const transactions = await Transaction.find({
+    $or: [{ senderUser: req.appUser._id }, { receiverUser: req.appUser._id }],
+    status: "completed",
+  })
+    .sort({ createdAt: -1 })
+    .limit(40)
+    .lean();
+
+  const analytics = buildInsightAnalytics({
+    wallet: req.appWallet,
+    transactions: transactions.map((transaction) => ({
+      amount: transaction.amount,
+      direction: transaction.senderUser.equals(req.appUser._id) ? "sent" : "received",
+      note: transaction.note,
+      reference: transaction.reference,
+      createdAt: transaction.createdAt,
+      counterpartyName: transaction.senderUser.equals(req.appUser._id)
+        ? transaction.receiverSnapshot?.fullName
+        : transaction.senderSnapshot?.fullName,
+    })),
+  });
+
   res.json({
     success: true,
-    data: latestInsight,
+    data: latestInsight ? { ...latestInsight, analytics } : { analytics },
   });
 });
 
@@ -53,6 +76,10 @@ const generateInsight = asyncHandler(async (req, res) => {
     .lean();
 
   const normalizedTransactions = normalizeTransactions(transactions, req.appUser._id);
+  const analytics = buildInsightAnalytics({
+    wallet: req.appWallet,
+    transactions: normalizedTransactions,
+  });
   const generated = await generateFinancialInsight({
     user: req.appUser.toObject(),
     wallet: req.appWallet.toObject(),
@@ -73,6 +100,7 @@ const generateInsight = asyncHandler(async (req, res) => {
     periodStart,
     periodEnd,
     model: generated.model,
+    analytics,
   });
 
   await createNotification({
@@ -85,7 +113,7 @@ const generateInsight = asyncHandler(async (req, res) => {
 
   res.status(201).json({
     success: true,
-    data: insight,
+    data: { ...insight.toObject(), analytics },
   });
 });
 

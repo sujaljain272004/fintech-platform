@@ -5,6 +5,7 @@ const walletRoutes = require("./walletRoutes");
 const transactionRoutes = require("./transactionRoutes");
 const insightRoutes = require("./insightRoutes");
 const notificationRoutes = require("./notificationRoutes");
+const adminRoutes = require("./adminRoutes");
 
 const router = express.Router();
 
@@ -22,5 +23,6 @@ router.use("/wallet", walletRoutes);
 router.use("/transactions", transactionRoutes);
 router.use("/insights", insightRoutes);
 router.use("/notifications", notificationRoutes);
+router.use("/admin", adminRoutes);
 
 module.exports = router;

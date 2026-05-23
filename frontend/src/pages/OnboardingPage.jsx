@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
+import PageTransition from "../components/ui/PageTransition";
 import {
   completeOnboarding,
   saveAddressInfo,
@@ -109,9 +110,9 @@ const OnboardingPage = () => {
   };
 
   return (
-    <div className="app-shell py-8">
+    <PageTransition className="app-shell py-8">
       <div className="mx-auto max-w-3xl">
-        <div className="glass-panel">
+        <div className="page-banner">
           <div className="mb-6">
             <p className="pill-chip">{t("onboardingFlow")}</p>
             <h1 className="mt-4 text-3xl font-extrabold tracking-tight">{stepTitleMap[currentStep]}</h1>
@@ -218,7 +219,7 @@ const OnboardingPage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

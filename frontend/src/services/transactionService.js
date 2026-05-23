@@ -1,8 +1,8 @@
 import api from "./api";
 
-export const getTransactions = async () => {
-  const response = await api.get("/transactions");
-  return response.data.data;
+export const getTransactions = async (params = {}) => {
+  const response = await api.get("/transactions", { params });
+  return response.data;
 };
 
 export const verifyTransaction = async (transactionId) => {

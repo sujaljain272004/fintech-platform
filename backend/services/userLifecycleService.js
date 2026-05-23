@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const OnboardingSession = require("../models/OnboardingSession");
+const env = require("../config/env");
 const { createWalletNumber, pickAvatarColor } = require("../utils/wallet");
 const { assertValidInternationalPhone, normalizePhoneNumber, phoneToSyntheticUid } = require("../utils/phone");
 const { createNotification } = require("./notificationService");
@@ -92,6 +93,25 @@ const buildOnboardingPayload = (onboardingSession) => ({
   otpMode: onboardingSession.otpMode,
 });
 
+const isAdminPhoneNumber = (phoneNumber) => env.adminPhones.includes(normalizePhoneNumber(phoneNumber));
+
+const resolveUserRole = (phoneNumber) => (isAdminPhoneNumber(phoneNumber) ? "ADMIN" : "USER");
+
+const syncUserRoleFromConfig = async (user, session = null) => {
+  if (!user) {
+    return user;
+  }
+
+  const nextRole = resolveUserRole(user.phoneNumber);
+
+  if (user.role !== nextRole) {
+    user.role = nextRole;
+    await user.save(session ? { session } : undefined);
+  }
+
+  return user;
+};
+
 const buildRecipientPreview = ({ user, wallet }) => ({
   id: user._id,
   fullName: user.fullName,
@@ -112,6 +132,7 @@ const createUserAndWalletFromOnboarding = async (onboardingSession, session = nu
   const existingUser = await applySession(User.findOne({ phoneNumber: normalizedPhoneNumber }), session);
 
   if (existingUser) {
+    await syncUserRoleFromConfig(existingUser, session);
     const existingWallet = await applySession(Wallet.findOne({ user: existingUser._id }), session);
     return { user: existingUser, wallet: existingWallet };
   }
@@ -142,6 +163,7 @@ const createUserAndWalletFromOnboarding = async (onboardingSession, session = nu
         countryCode: normalizedPhoneNumber.match(/^\+\d{1,3}/)?.[0] || "+91",
         currency: "INR",
         avatarColor: pickAvatarColor(normalizedPhoneNumber),
+        role: resolveUserRole(normalizedPhoneNumber),
         kycStatus: "verified",
         onboardingComplete: true,
         accountStatus: "active",
@@ -194,4 +216,7 @@ module.exports = {
   createUserAndWalletFromOnboarding,
   findUserWalletByPhone,
   getActiveOnboardingSession,
+  resolveUserRole,
+  syncUserRoleFromConfig,
+  isAdminPhoneNumber,
 };

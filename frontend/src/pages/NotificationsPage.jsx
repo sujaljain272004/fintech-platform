@@ -7,6 +7,8 @@ import {
   markNotificationRead,
 } from "../services/notificationService";
 import { useAuth } from "../context/AuthContext";
+import PageTransition from "../components/ui/PageTransition";
+import { EmptyState, ListSkeleton } from "../components/ui/StateBlocks";
 
 const NotificationsPage = () => {
   const { t } = useTranslation();
@@ -58,11 +60,12 @@ const NotificationsPage = () => {
   };
 
   return (
-    <div className="glass-panel">
-      <div className="mb-5 flex items-center justify-between">
+    <PageTransition className="space-y-5">
+      <div className="topbar-shell">
         <div>
-          <h2 className="section-title">{t("notifications")}</h2>
-          <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
+          <p className="page-kicker">{t("notifications")}</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{t("notifications")}</h2>
+          <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             Transfer alerts, AI updates, and security events stay in one place.
           </p>
         </div>
@@ -71,10 +74,18 @@ const NotificationsPage = () => {
         </button>
       </div>
 
-      {loading ? <p className="text-sm text-slate-500 dark:text-slate-400">{t("loading")}</p> : null}
-      {error ? <p className="mb-4 text-sm text-rose-600">{error}</p> : null}
-      {!loading ? <NotificationPanel notifications={notifications} onMarkRead={handleMarkRead} /> : null}
-    </div>
+      <div className="glass-panel">
+        {loading ? <ListSkeleton rows={3} /> : null}
+        {error ? <p className="mb-4 text-sm text-rose-600">{error}</p> : null}
+        {!loading && notifications.length ? <NotificationPanel notifications={notifications} onMarkRead={handleMarkRead} /> : null}
+        {!loading && !notifications.length ? (
+          <EmptyState
+            title="No notifications"
+            description="Transfer alerts, AI summaries, and security notices will appear here."
+          />
+        ) : null}
+      </div>
+    </PageTransition>
   );
 };
 

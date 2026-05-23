@@ -44,7 +44,7 @@ const DemoLoginForm = () => {
   };
 
   return (
-    <div className="glass-panel w-full max-w-xl">
+    <div className="page-banner w-full max-w-xl">
       <div className="mb-6 flex items-start justify-between gap-4">
         <div>
           <div className="pill-chip mb-3 gap-2">
@@ -56,6 +56,21 @@ const DemoLoginForm = () => {
         </div>
         <div className="hidden h-14 w-14 items-center justify-center rounded-3xl bg-teal-500/10 text-teal-700 md:flex dark:text-teal-300">
           <Smartphone size={26} />
+        </div>
+      </div>
+
+      <div className="mb-6 grid gap-3 sm:grid-cols-3">
+        <div className="metric-tile">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700 dark:text-teal-300">Zero fee</p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Transfers without hidden charges.</p>
+        </div>
+        <div className="metric-tile">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700 dark:text-teal-300">Fast setup</p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">One phone number starts the wallet.</p>
+        </div>
+        <div className="metric-tile">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-teal-700 dark:text-teal-300">Always on</p>
+          <p className="mt-2 text-sm text-slate-600 dark:text-slate-300">Session persistence across visits.</p>
         </div>
       </div>
 
