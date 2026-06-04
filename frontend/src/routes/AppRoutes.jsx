@@ -9,8 +9,10 @@ import TransferPage from "../pages/TransferPage";
 import TransactionsPage from "../pages/TransactionsPage";
 import InsightsPage from "../pages/InsightsPage";
 import NotificationsPage from "../pages/NotificationsPage";
+import AdminPage from "../pages/AdminPage";
 import ProtectedRoute from "../components/ProtectedRoute";
 import OnboardingRoute from "../components/OnboardingRoute";
+import AdminRoute from "../components/AdminRoute";
 import Layout from "../components/Layout";
 import { useAuth } from "../context/AuthContext";
 
@@ -65,6 +67,9 @@ const AppRoutes = () => {
             <Route path="/transactions" element={<TransactionsPage />} />
             <Route path="/insights" element={<InsightsPage />} />
             <Route path="/notifications" element={<NotificationsPage />} />
+            <Route element={<AdminRoute />}>
+              <Route path="/admin" element={<AdminPage />} />
+            </Route>
           </Route>
         </Route>
         <Route

@@ -5,12 +5,9 @@ const accentClasses = {
 };
 
 const SummaryCard = ({ label, value, accent = "teal", helper }) => (
-  <div className="soft-panel">
-    <p
-      className={`text-xs font-bold uppercase tracking-[0.2em] ${
-        accentClasses[accent] || accentClasses.teal
-      }`}
-    >
+  <div className="metric-tile">
+    <div className={`mb-4 h-1.5 w-12 rounded-full ${accent === "emerald" ? "bg-emerald-500" : accent === "orange" ? "bg-orange-500" : "bg-teal-500"}`} />
+    <p className={`text-[11px] font-semibold uppercase tracking-[0.24em] ${accentClasses[accent] || accentClasses.teal}`}>
       {label}
     </p>
     <p className="mt-3 text-2xl font-extrabold">{value}</p>

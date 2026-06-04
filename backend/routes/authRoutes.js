@@ -3,13 +3,20 @@ const { body } = require("express-validator");
 const authenticate = require("../middleware/authenticate");
 const authenticateOnboarding = require("../middleware/authenticateOnboarding");
 const validate = require("../middleware/validate");
-const { loginWithPhone, getSession, getAuthStatus } = require("../controllers/authController");
+const {
+  getSession,
+  getAuthStatus,
+  loginWithEmailOtp,
+  refreshAccessToken,
+  requestEmailOtp,
+} = require("../controllers/authController");
 
 const router = express.Router();
 
 router.post(
-  "/login",
+  "/request-otp",
   [
+    body("email").trim().isEmail().withMessage("A valid email is required."),
     body("phoneNumber")
       .trim()
       .matches(/^\+[1-9]\d{7,14}$/)
@@ -25,13 +32,35 @@ router.post(
       .withMessage("Preferred language must be en, hi, or mr."),
   ],
   validate,
-  loginWithPhone
+  requestEmailOtp
 );
 
+router.post(
+  "/login",
+  [
+    body("email").trim().isEmail().withMessage("A valid email is required."),
+    body("phoneNumber")
+      .trim()
+      .matches(/^\+[1-9]\d{7,14}$/)
+      .withMessage("Phone number must use international format like +919876543210."),
+    body("otp")
+      .trim()
+      .matches(/^\d{6}$/)
+      .withMessage("OTP must be a 6 digit code."),
+    body("preferredLanguage")
+      .optional()
+      .isIn(["en", "hi", "mr"])
+      .withMessage("Preferred language must be en, hi, or mr."),
+  ],
+  validate,
+  loginWithEmailOtp
+);
+
+router.post("/refresh", [body("refreshToken").trim().notEmpty().withMessage("Refresh token is required.")], validate, refreshAccessToken);
 router.get("/session", authenticate, getSession);
 router.get("/status", (req, res, next) => {
-  const phoneNumber = req.headers["x-user-phone"];
-  if (!phoneNumber) {
+  const hasBearerToken = Boolean(req.headers.authorization);
+  if (!hasBearerToken) {
     return res.status(401).json({ success: false, message: "Session not found." });
   }
   return authenticate(req, res, (authError) => {

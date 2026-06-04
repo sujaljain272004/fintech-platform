@@ -14,6 +14,7 @@ const {
   buildRecipientPreview,
 } = require("../services/userLifecycleService");
 const { assertValidInternationalPhone } = require("../utils/phone");
+const { buildInsightAnalytics } = require("../utils/analytics");
 
 const mapTransactionForViewer = (transaction, viewerId) => {
   const isSender = transaction.senderUser._id
@@ -65,6 +66,19 @@ const getDashboard = asyncHandler(async (req, res) => {
       ]),
     ]);
 
+  const timelineTransactions = await Transaction.find({
+    $or: [{ senderUser: req.appUser._id }, { receiverUser: req.appUser._id }],
+    status: "completed",
+  })
+    .sort({ createdAt: -1 })
+    .limit(40)
+    .lean();
+
+  const analytics = buildInsightAnalytics({
+    wallet: req.appWallet,
+    transactions: timelineTransactions.map((transaction) => mapTransactionForViewer(transaction, req.appUser._id)),
+  });
+
   res.json({
     success: true,
     data: {
@@ -89,6 +103,7 @@ const getDashboard = asyncHandler(async (req, res) => {
         mapTransactionForViewer(transaction, req.appUser._id)
       ),
       latestInsight,
+      analytics,
     },
   });
 });

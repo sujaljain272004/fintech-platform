@@ -4,7 +4,7 @@ import { formatDateTime } from "../utils/formatters";
 const NotificationPanel = ({ notifications = [], onMarkRead }) => {
   if (!notifications.length) {
     return (
-      <div className="soft-panel">
+      <div className="surface-stack">
         <p className="text-sm text-slate-500 dark:text-slate-400">
           No notifications yet. Transfer, AI, and security updates will appear here.
         </p>
@@ -21,7 +21,7 @@ const NotificationPanel = ({ notifications = [], onMarkRead }) => {
           className={`w-full text-left ${notification.read ? "opacity-80" : ""}`}
           onClick={() => !notification.read && onMarkRead(notification._id)}
         >
-          <div className="soft-panel">
+          <div className="surface-stack">
             <div className="flex items-start gap-3">
               <div className="mt-1 flex h-11 w-11 items-center justify-center rounded-2xl bg-teal-500/10 text-teal-700 dark:text-teal-300">
                 <BellRing size={18} />

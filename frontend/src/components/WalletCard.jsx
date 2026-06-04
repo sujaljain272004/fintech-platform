@@ -10,22 +10,24 @@ const WalletCard = ({ wallet, profile }) => {
   }
 
   return (
-    <div className="relative overflow-hidden rounded-[30px] bg-slate-950 p-6 text-white shadow-fintech dark:bg-gradient-to-br dark:from-teal-400 dark:via-cyan-300 dark:to-emerald-200 dark:text-slate-950">
-      <div className="absolute right-0 top-0 h-40 w-40 rounded-full bg-white/10 blur-3xl dark:bg-white/40" />
+    <div className="page-banner overflow-hidden bg-slate-950 text-white dark:bg-gradient-to-br dark:from-teal-400 dark:via-cyan-300 dark:to-emerald-200 dark:text-slate-950">
+      <div className="glow-accent -right-10 top-0 h-44 w-44 bg-white/10 dark:bg-white/35" />
       <div className="relative flex items-start justify-between gap-4">
         <div>
-          <p className="text-sm font-semibold uppercase tracking-[0.3em] text-white/70 dark:text-slate-700">
+          <p className="text-[11px] font-semibold uppercase tracking-[0.35em] text-white/70 dark:text-slate-700">
             {t("walletBalance")}
           </p>
           <h2 className="mt-3 text-4xl font-extrabold tracking-tight">
             {formatCurrency(wallet.balance, wallet.currency)}
           </h2>
-          <p className="mt-4 text-sm text-white/70 dark:text-slate-700">
-            {t("walletId")}: {wallet.walletNumber}
-          </p>
-          <p className="mt-1 text-sm text-white/70 dark:text-slate-700">
-            {profile?.phoneNumber}
-          </p>
+          <div className="mt-5 flex flex-wrap gap-2 text-sm text-white/75 dark:text-slate-700">
+            <span className="rounded-full bg-white/10 px-3 py-1.5 font-semibold dark:bg-white/45">
+              {t("walletId")}: {wallet.walletNumber}
+            </span>
+            <span className="rounded-full bg-white/10 px-3 py-1.5 font-semibold dark:bg-white/45">
+              {profile?.phoneNumber}
+            </span>
+          </div>
         </div>
         <div className="flex h-14 w-14 items-center justify-center rounded-3xl bg-white/10 dark:bg-slate-950/10">
           <WalletCards size={26} />

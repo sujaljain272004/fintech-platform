@@ -6,18 +6,20 @@ const {
   createUserAndWalletFromOnboarding,
 } = require("../services/userLifecycleService");
 const Notification = require("../models/Notification");
+const { buildAuthTokens } = require("../services/tokenService");
 
-const toAuthPayload = async (user, wallet) => {
+const toAuthPayload = async (user, wallet, tokens = null) => {
   const unreadNotifications = await Notification.countDocuments({
     user: user._id,
     read: false,
   });
 
-  return {
+  const payload = {
     user: {
       id: user._id,
       fullName: user.fullName,
       email: user.email,
+      emailVerified: Boolean(user.emailVerified),
       phoneNumber: user.phoneNumber,
       preferredLanguage: user.preferredLanguage,
       currency: user.currency,
@@ -36,6 +38,12 @@ const toAuthPayload = async (user, wallet) => {
     },
     unreadNotifications,
   };
+
+  if (tokens) {
+    payload.tokens = tokens;
+  }
+
+  return payload;
 };
 
 const getOnboardingSession = asyncHandler(async (req, res) => {
@@ -47,8 +55,11 @@ const getOnboardingSession = asyncHandler(async (req, res) => {
 
 const saveBasicInfo = asyncHandler(async (req, res) => {
   const { fullName, email, dateOfBirth, gender } = req.body;
+  if (req.onboardingSession.email && email !== req.onboardingSession.email) {
+    throw new AppError("Use the verified email address for onboarding.", 422);
+  }
   req.onboardingSession.fullName = fullName;
-  req.onboardingSession.email = email;
+  req.onboardingSession.email = req.onboardingSession.email || email;
   req.onboardingSession.dateOfBirth = dateOfBirth;
   req.onboardingSession.gender = gender;
   req.onboardingSession.currentStep = "address";
@@ -147,7 +158,7 @@ const completeOnboarding = asyncHandler(async (req, res) => {
   res.status(201).json({
     success: true,
     sessionState: "authenticated",
-    data: await toAuthPayload(user, wallet),
+    data: await toAuthPayload(user, wallet, buildAuthTokens(user)),
   });
 });
 

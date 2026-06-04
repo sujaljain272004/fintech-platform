@@ -6,10 +6,11 @@ import {
   useMemo,
   useState,
 } from "react";
-import { getAuthStatus, loginWithPhone } from "../services/authService";
+import { getAuthStatus, loginWithEmailOtp, requestEmailOtp } from "../services/authService";
 import { getOnboardingSession } from "../services/onboardingService";
 
 const AuthContext = createContext(null);
+const AUTH_STORAGE_KEY = "finlink-auth-session";
 const PHONE_AUTH_STORAGE_KEY = "finlink-phone-session";
 const LEGACY_DEMO_AUTH_STORAGE_KEY = "finlink-demo-auth";
 
@@ -39,6 +40,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const clearAuthState = useCallback(() => {
+    localStorage.removeItem(AUTH_STORAGE_KEY);
     localStorage.removeItem(PHONE_AUTH_STORAGE_KEY);
     localStorage.removeItem(LEGACY_DEMO_AUTH_STORAGE_KEY);
     setAuthUser(null);
@@ -50,7 +52,7 @@ export const AuthProvider = ({ children }) => {
   }, []);
 
   const refreshSession = useCallback(async () => {
-    const storedAuth = localStorage.getItem(PHONE_AUTH_STORAGE_KEY);
+    const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
 
     if (!storedAuth) {
       clearAuthState();
@@ -69,7 +71,8 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     const bootstrapAuth = async () => {
       localStorage.removeItem(LEGACY_DEMO_AUTH_STORAGE_KEY);
-      const storedAuth = localStorage.getItem(PHONE_AUTH_STORAGE_KEY);
+      localStorage.removeItem(PHONE_AUTH_STORAGE_KEY);
+      const storedAuth = localStorage.getItem(AUTH_STORAGE_KEY);
 
       if (!storedAuth) {
         setLoading(false);
@@ -95,34 +98,67 @@ export const AuthProvider = ({ children }) => {
     bootstrapAuth();
   }, [clearAuthState, hydrateSession]);
 
-  const signInWithPhone = useCallback(
-    async ({ phoneNumber, fullName, preferredLanguage }) => {
+  const sendEmailOtp = useCallback(async ({ email, phoneNumber, fullName, preferredLanguage }) => {
+    const response = await requestEmailOtp({
+      email,
+      phoneNumber,
+      fullName,
+      preferredLanguage,
+    });
+    return response;
+  }, []);
+
+  const persistAuthSession = useCallback((authResponse, identity = {}) => {
+    const tokens = authResponse?.data?.tokens || {};
+    const storedAuth = {
+      email: identity.email || authResponse?.data?.email || authResponse?.data?.user?.email || "",
+      phoneNumber: identity.phoneNumber || authResponse?.data?.phoneNumber || authResponse?.data?.user?.phoneNumber || "",
+      fullName: identity.fullName || authResponse?.data?.user?.fullName || "",
+      accessToken: tokens.accessToken || "",
+      refreshToken: tokens.refreshToken || "",
+      onboardingToken: tokens.onboardingToken || "",
+    };
+
+    localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(storedAuth));
+    setAuthUser(storedAuth);
+
+    if (authResponse.sessionState === "authenticated") {
+      hydrateSession(authResponse.data);
+    } else {
+      hydrateOnboarding(authResponse.data);
+    }
+
+    return storedAuth;
+  }, [hydrateOnboarding, hydrateSession]);
+
+  const signInWithEmailOtp = useCallback(
+    async ({ email, phoneNumber, otp, fullName, preferredLanguage }) => {
       setLoading(true);
 
       try {
-        const authResponse = await loginWithPhone({
+        const authResponse = await loginWithEmailOtp({
+          email,
           phoneNumber,
-          fullName,
+          otp,
           preferredLanguage,
         });
-        const storedAuth = {
-          phoneNumber,
-          fullName: fullName || "",
-        };
 
-        localStorage.setItem(PHONE_AUTH_STORAGE_KEY, JSON.stringify(storedAuth));
-        setAuthUser(storedAuth);
-        if (authResponse.sessionState === "authenticated") {
-          hydrateSession(authResponse.data);
-        } else {
-          hydrateOnboarding(authResponse.data);
-        }
+        persistAuthSession(authResponse, {
+          email,
+          phoneNumber,
+          fullName,
+        });
         return authResponse;
       } finally {
         setLoading(false);
       }
     },
-    [hydrateOnboarding, hydrateSession]
+    [persistAuthSession]
+  );
+
+  const completeAuthSession = useCallback(
+    (authResponse) => persistAuthSession(authResponse, authUser || {}),
+    [authUser, persistAuthSession]
   );
 
   const refreshOnboarding = useCallback(async () => {
@@ -158,7 +194,9 @@ export const AuthProvider = ({ children }) => {
       sessionMode,
       isAuthenticated: sessionMode === "authenticated" && Boolean(authUser && profile && wallet),
       requiresOnboarding: sessionMode === "onboarding",
-      signInWithPhone,
+      completeAuthSession,
+      sendEmailOtp,
+      signInWithEmailOtp,
       signOutUser,
       refreshSession,
       refreshOnboarding,
@@ -172,7 +210,9 @@ export const AuthProvider = ({ children }) => {
       profile,
       refreshOnboarding,
       refreshSession,
-      signInWithPhone,
+      completeAuthSession,
+      sendEmailOtp,
+      signInWithEmailOtp,
       signOutUser,
       sessionMode,
       unreadNotifications,

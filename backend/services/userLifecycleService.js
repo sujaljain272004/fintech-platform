@@ -1,6 +1,7 @@
 const User = require("../models/User");
 const Wallet = require("../models/Wallet");
 const OnboardingSession = require("../models/OnboardingSession");
+const env = require("../config/env");
 const { createWalletNumber, pickAvatarColor } = require("../utils/wallet");
 const { assertValidInternationalPhone, normalizePhoneNumber, phoneToSyntheticUid } = require("../utils/phone");
 const { createNotification } = require("./notificationService");
@@ -42,7 +43,10 @@ const getActiveOnboardingSession = async (phoneNumber, session = null) => {
   );
 };
 
-const createOrResumeOnboardingSession = async ({ phoneNumber, preferredLanguage = "en" }, session = null) => {
+const createOrResumeOnboardingSession = async (
+  { phoneNumber, email = "", preferredLanguage = "en" },
+  session = null
+) => {
   const normalizedPhoneNumber = assertValidInternationalPhone(phoneNumber);
   let onboardingSession = await getActiveOnboardingSession(normalizedPhoneNumber, session);
 
@@ -51,6 +55,9 @@ const createOrResumeOnboardingSession = async ({ phoneNumber, preferredLanguage 
       [
         {
           phoneNumber: normalizedPhoneNumber,
+          email,
+          emailVerified: Boolean(email),
+          emailVerifiedAt: email ? new Date() : null,
           firebaseUid: phoneToSyntheticUid(normalizedPhoneNumber),
           preferredLanguage,
           phoneVerified: true,
@@ -63,6 +70,11 @@ const createOrResumeOnboardingSession = async ({ phoneNumber, preferredLanguage 
     );
     onboardingSession = createdSession;
   } else {
+    if (email) {
+      onboardingSession.email = email;
+      onboardingSession.emailVerified = true;
+      onboardingSession.emailVerifiedAt = onboardingSession.emailVerifiedAt || new Date();
+    }
     onboardingSession.preferredLanguage = preferredLanguage || onboardingSession.preferredLanguage;
     await onboardingSession.save(session ? { session } : undefined);
   }
@@ -74,6 +86,7 @@ const buildOnboardingPayload = (onboardingSession) => ({
   phoneNumber: onboardingSession.phoneNumber,
   fullName: onboardingSession.fullName || "",
   email: onboardingSession.email || "",
+  emailVerified: Boolean(onboardingSession.emailVerified),
   dateOfBirth: onboardingSession.dateOfBirth || "",
   gender: onboardingSession.gender || "",
   addressLine: onboardingSession.addressLine || "",
@@ -91,6 +104,25 @@ const buildOnboardingPayload = (onboardingSession) => ({
   currentStep: onboardingSession.currentStep,
   otpMode: onboardingSession.otpMode,
 });
+
+const isAdminPhoneNumber = (phoneNumber) => env.adminPhones.includes(normalizePhoneNumber(phoneNumber));
+
+const resolveUserRole = (phoneNumber) => (isAdminPhoneNumber(phoneNumber) ? "ADMIN" : "USER");
+
+const syncUserRoleFromConfig = async (user, session = null) => {
+  if (!user) {
+    return user;
+  }
+
+  const nextRole = resolveUserRole(user.phoneNumber);
+
+  if (user.role !== nextRole) {
+    user.role = nextRole;
+    await user.save(session ? { session } : undefined);
+  }
+
+  return user;
+};
 
 const buildRecipientPreview = ({ user, wallet }) => ({
   id: user._id,
@@ -112,6 +144,7 @@ const createUserAndWalletFromOnboarding = async (onboardingSession, session = nu
   const existingUser = await applySession(User.findOne({ phoneNumber: normalizedPhoneNumber }), session);
 
   if (existingUser) {
+    await syncUserRoleFromConfig(existingUser, session);
     const existingWallet = await applySession(Wallet.findOne({ user: existingUser._id }), session);
     return { user: existingUser, wallet: existingWallet };
   }
@@ -123,6 +156,8 @@ const createUserAndWalletFromOnboarding = async (onboardingSession, session = nu
         fullName: onboardingSession.fullName,
         phoneNumber: normalizedPhoneNumber,
         email: onboardingSession.email || "",
+        emailVerified: Boolean(onboardingSession.emailVerified || onboardingSession.email),
+        emailVerifiedAt: onboardingSession.emailVerifiedAt || new Date(),
         dateOfBirth: onboardingSession.dateOfBirth || "",
         gender: onboardingSession.gender || "",
         address: {
@@ -142,6 +177,7 @@ const createUserAndWalletFromOnboarding = async (onboardingSession, session = nu
         countryCode: normalizedPhoneNumber.match(/^\+\d{1,3}/)?.[0] || "+91",
         currency: "INR",
         avatarColor: pickAvatarColor(normalizedPhoneNumber),
+        role: resolveUserRole(normalizedPhoneNumber),
         kycStatus: "verified",
         onboardingComplete: true,
         accountStatus: "active",
@@ -194,4 +230,7 @@ module.exports = {
   createUserAndWalletFromOnboarding,
   findUserWalletByPhone,
   getActiveOnboardingSession,
+  resolveUserRole,
+  syncUserRoleFromConfig,
+  isAdminPhoneNumber,
 };

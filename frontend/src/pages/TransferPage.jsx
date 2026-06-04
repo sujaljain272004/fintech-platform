@@ -5,6 +5,8 @@ import WalletCard from "../components/WalletCard";
 import { searchRecipientByPhone, transferMoney } from "../services/walletService";
 import { useAuth } from "../context/AuthContext";
 import { formatCurrency, formatDateTime, truncateHash } from "../utils/formatters";
+import PageTransition from "../components/ui/PageTransition";
+import { EmptyState } from "../components/ui/StateBlocks";
 
 const TransferPage = () => {
   const { t } = useTranslation();
@@ -66,19 +68,29 @@ const TransferPage = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <PageTransition className="space-y-6">
+      <div className="topbar-shell">
+        <div>
+          <p className="page-kicker">{t("transfer")}</p>
+          <h2 className="mt-3 text-3xl font-extrabold tracking-tight">{t("transferHint")}</h2>
+          <p className="mt-2 max-w-2xl text-sm leading-7 text-slate-500 dark:text-slate-400">
+            Search a real recipient by phone number, preview the wallet, and send with a blockchain-style receipt.
+          </p>
+        </div>
+        <div className="rounded-3xl bg-teal-50 px-4 py-3 text-sm text-teal-800 dark:bg-teal-500/10 dark:text-teal-200">
+          {t("realTransferHint")}
+        </div>
+      </div>
+
       <WalletCard wallet={wallet} profile={user} />
 
-      <div className="glass-panel max-w-3xl">
+      <div className="grid gap-6 xl:grid-cols-[1fr_0.72fr]">
+        <div className="glass-panel max-w-3xl">
         <div className="mb-6">
           <h2 className="section-title">{t("transfer")}</h2>
           <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">
             {t("transferHint")}
           </p>
-        </div>
-
-        <div className="mb-6 rounded-2xl border border-teal-100 bg-teal-50/70 p-4 text-sm text-teal-800 dark:border-teal-500/20 dark:bg-teal-500/10 dark:text-teal-200">
-          {t("realTransferHint")}
         </div>
 
         <form className="space-y-4" onSubmit={handleSubmit}>
@@ -142,6 +154,13 @@ const TransferPage = () => {
             </div>
           ) : null}
 
+          {!recipientPreview && recipient ? (
+            <EmptyState
+              title="Preview recipient"
+              description="Search a phone number to confirm the destination wallet before sending funds."
+            />
+          ) : null}
+
           <div className="grid gap-4 sm:grid-cols-2">
             <div>
               <label className="field-label">{t("amount")}</label>
@@ -171,7 +190,7 @@ const TransferPage = () => {
 
           {error ? <p className="text-sm font-semibold text-rose-600">{error}</p> : null}
           {receipt ? (
-            <div className="rounded-3xl bg-emerald-50 p-4 text-sm text-emerald-800 dark:bg-emerald-500/10 dark:text-emerald-200">
+            <div className="surface-stack border-emerald-100 bg-emerald-50/70 text-sm text-emerald-800 dark:border-emerald-500/20 dark:bg-emerald-500/10 dark:text-emerald-200">
               <p className="font-bold">{t("transferSuccess")}</p>
               <p>{t("amountSent")}: {formatCurrency(receipt.amount)}</p>
               <p>{t("recipientName")}: {receipt.receiverName}</p>
@@ -186,8 +205,24 @@ const TransferPage = () => {
             {submitting ? "Sending..." : t("sendNow")}
           </button>
         </form>
+        </div>
+
+        <div className="space-y-4">
+          <div className="section-shell">
+            <p className="page-kicker">Security</p>
+            <h3 className="mt-3 text-2xl font-extrabold tracking-tight">Transfer safely</h3>
+            <p className="mt-2 text-sm leading-7 text-slate-500 dark:text-slate-400">
+              Every transfer is checked against the recipient wallet and logged with a ledger hash for traceability.
+            </p>
+          </div>
+          <div className="section-shell">
+            <p className="text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-400">Current wallet</p>
+            <p className="mt-2 text-2xl font-extrabold">{formatCurrency(wallet?.balance || 0, wallet?.currency || "INR")}</p>
+            <p className="mt-2 text-sm text-slate-500 dark:text-slate-400">{user?.fullName}</p>
+          </div>
+        </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

@@ -7,31 +7,33 @@ FinLink is a hackathon-ready fintech platform built for migrant workers and unde
 - Frontend: React + Vite + Tailwind CSS + Axios + React Router + react-i18next
 - Backend: Node.js + Express.js
 - Database: MongoDB Atlas + Mongoose
-- Auth: Phone-based session sign-in with persistent MongoDB-backed user and wallet records
-- AI: OpenAI Responses API
+- Auth: Email OTP verification with JWT access / refresh tokens and persistent MongoDB-backed user and wallet records
+- AI: Groq API through the OpenAI-compatible chat completions interface
 - Deployment targets: Vercel for frontend, Render or Railway for backend
 
 ## What is implemented
 
-- Phone-based sign-in with protected routes and localStorage session persistence
-- Automatic user and wallet creation on first phone sign-in
+- Email OTP sign-in/signup with protected JWT routes and localStorage token persistence
+- Automatic user and wallet creation after first OTP-verified onboarding
 - Wallet dashboard with real balance, summary cards, recent activity, and profile info
 - Zero-fee wallet-to-wallet transfers using real registered phone numbers
 - Transaction history with linked ledger hashes and verification endpoint
-- AI financial insights with OpenAI and a heuristic fallback engine
+- Dynamic AI financial insights with Groq and a transaction-aware heuristic fallback engine
 - Notifications for transfers, AI insight generation, and secure sign-ins
 - Multilingual UI in English, Hindi, and Marathi
 - Light and dark responsive fintech UI optimized for mobile-first use
 
-## Phone sign-in behavior
+## Email OTP sign-in behavior
 
-- Use an international phone number such as `+919876543210`
-- The first sign-in creates the user and wallet automatically
-- Signing in later with the same phone number restores the same balance, history, and notifications
+- Use an email address plus an international phone number such as `+919876543210`
+- The backend sends a 6-digit OTP to the email address through SMTP
+- Verifying the OTP returns JWT access / refresh tokens for existing users
+- New users receive a short-lived onboarding token, then receive app JWTs after completing onboarding
+- Signing in later with the same verified email and phone number restores the same balance, history, and notifications
 
 ## Important Firebase note
 
-The codebase is now structured around phone-number identity and real persistent wallet ownership. Actual Firebase OTP cannot be fully turned back on in a working state until the Firebase project has billing enabled, because Phone Auth on Spark returns `auth/billing-not-enabled`. Until that external blocker is removed, the app uses direct phone-number session sign-in while keeping the backend data model and flows aligned with a real phone-first wallet.
+The codebase is now structured around email OTP verification plus phone-number wallet identity. Actual Firebase Phone OTP cannot be fully turned back on in a working state until the Firebase project has billing enabled, because Phone Auth on Spark returns `auth/billing-not-enabled`.
 
 ## Project structure
 
@@ -105,8 +107,10 @@ Frontend runs on `http://localhost:5173`.
 
 ### Auth
 
-- `POST /api/auth/login` create or restore a phone-owned wallet session
-- `GET /api/auth/session` restore FinLink session data for the logged-in phone user
+- `POST /api/auth/request-otp` send a 6-digit OTP to the user's email address
+- `POST /api/auth/login` verify email OTP and create/restore the JWT-backed wallet session
+- `POST /api/auth/refresh` exchange a refresh token for a fresh token pair
+- `GET /api/auth/session` restore FinLink session data for the logged-in JWT user
 
 ### Wallet
 
@@ -146,7 +150,7 @@ The hash is generated from the prior block hash plus the new transfer payload, c
 
 ## AI insight behavior
 
-The backend uses OpenAI via the Responses API with a strict JSON schema response format. If the OpenAI request fails or the key is unavailable, the platform falls back to a heuristic engine so the feature still works in demo mode.
+The backend uses Groq through its OpenAI-compatible chat completions API and asks for JSON insight reports based on wallet balance, recent transactions, occupation, income range, and wallet usage purpose. If the Groq request fails or the key is unavailable, the platform falls back to a dynamic heuristic engine so the feature still reacts to real wallet activity in demo mode.
 
 ## Deployment
 
@@ -164,9 +168,15 @@ The backend uses OpenAI via the Responses API with a strict JSON schema response
 4. Make sure MongoDB Atlas allows access from the deployment environment.
 5. Deploy.
 
+### AWS CloudFront + ECS option
+
+The repo now also includes [cloud/cloudformation.yml](cloud/cloudformation.yml) for an AWS deployment that fronts the SPA with S3 + CloudFront and runs the backend on ECS Fargate behind an Application Load Balancer.
+
+The stack expects a backend container image URI plus the runtime secrets as parameters. After the stack creates the frontend bucket, upload `frontend/dist` to the S3 bucket and use the CloudFront URL output as the app entrypoint.
+
 ## Verification completed in this workspace
 
-- Frontend production build passed with Vite after the phone-session rewrite.
+- Frontend production build passed with Vite after the email OTP / JWT auth update.
 - Backend source syntax check passed across application files.
 - Two unique phone-based users were created and persisted in MongoDB.
 - A real transfer from User A to User B updated both balances correctly.

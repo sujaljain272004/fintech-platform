@@ -2,7 +2,14 @@ import { BadgeCheck, Download, Upload } from "lucide-react";
 import { useTranslation } from "react-i18next";
 import { formatCurrency, formatDateTime, truncateHash } from "../utils/formatters";
 
-const TransactionList = ({ transactions = [], onVerify, verifyingId = "" }) => {
+const statusToneMap = {
+  completed: "bg-emerald-100 text-emerald-700 dark:bg-emerald-500/15 dark:text-emerald-300",
+  pending: "bg-amber-100 text-amber-700 dark:bg-amber-500/15 dark:text-amber-300",
+  failed: "bg-rose-100 text-rose-700 dark:bg-rose-500/15 dark:text-rose-300",
+  reversed: "bg-slate-200 text-slate-700 dark:bg-slate-700 dark:text-slate-200",
+};
+
+const TransactionList = ({ transactions = [], onVerify, verifyingId = "", onSelectTransaction }) => {
   const { t } = useTranslation();
 
   if (!transactions.length) {
@@ -15,7 +22,18 @@ const TransactionList = ({ transactions = [], onVerify, verifyingId = "" }) => {
         const incoming = transaction.direction === "received";
 
         return (
-          <div key={transaction.id} className="soft-panel">
+          <div
+            key={transaction.id}
+            role="button"
+            tabIndex={0}
+            onClick={() => onSelectTransaction?.(transaction)}
+            onKeyDown={(event) => {
+              if (event.key === "Enter" || event.key === " ") {
+                onSelectTransaction?.(transaction);
+              }
+            }}
+            className="surface-stack w-full text-left transition hover:-translate-y-0.5 hover:shadow-lg"
+          >
             <div className="flex items-start justify-between gap-4">
               <div className="flex gap-3">
                 <div
@@ -31,6 +49,9 @@ const TransactionList = ({ transactions = [], onVerify, verifyingId = "" }) => {
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-bold">{transaction.counterpartyName}</p>
                     <span className="pill-chip">{incoming ? t("received") : t("sent")}</span>
+                    <span className={`pill-chip border-0 ${statusToneMap[transaction.status] || statusToneMap.completed}`}>
+                      {transaction.status}
+                    </span>
                   </div>
                   <p className="mt-1 text-sm text-slate-500 dark:text-slate-400">
                     {transaction.note || transaction.reference}
@@ -52,8 +73,11 @@ const TransactionList = ({ transactions = [], onVerify, verifyingId = "" }) => {
                 </p>
                 <button
                   type="button"
-                  onClick={() => onVerify?.(transaction.id)}
-                  className="mt-2 text-xs font-semibold text-teal-700 hover:text-teal-600 dark:text-teal-300"
+                  onClick={(event) => {
+                    event.stopPropagation();
+                    onVerify?.(transaction.id);
+                  }}
+                  className="mt-2 inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-teal-700 transition hover:bg-teal-50 hover:text-teal-600 dark:bg-slate-800 dark:text-teal-300 dark:hover:bg-slate-700"
                   disabled={verifyingId === transaction.id}
                 >
                   {verifyingId === transaction.id ? "Verifying..." : truncateHash(transaction.blockchain?.hash || "", 10, 10)}

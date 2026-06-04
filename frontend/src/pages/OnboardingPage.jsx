@@ -2,6 +2,7 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { useTranslation } from "react-i18next";
 import { useAuth } from "../context/AuthContext";
+import PageTransition from "../components/ui/PageTransition";
 import {
   completeOnboarding,
   saveAddressInfo,
@@ -16,7 +17,7 @@ const stepOrder = ["basic", "address", "financial", "kyc", "language", "review"]
 const OnboardingPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { onboarding, updateOnboarding, refreshSession } = useAuth();
+  const { completeAuthSession, onboarding, updateOnboarding } = useAuth();
   const [formData, setFormData] = useState(() => onboarding || {});
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState("");
@@ -87,8 +88,8 @@ const OnboardingPage = () => {
     setError("");
     try {
       const response = await completeOnboarding();
+      completeAuthSession(response);
       updateOnboarding(null);
-      await refreshSession();
       if (response.sessionState === "authenticated") {
         navigate("/dashboard", { replace: true });
       }
@@ -109,9 +110,9 @@ const OnboardingPage = () => {
   };
 
   return (
-    <div className="app-shell py-8">
+    <PageTransition className="app-shell py-8">
       <div className="mx-auto max-w-3xl">
-        <div className="glass-panel">
+        <div className="page-banner">
           <div className="mb-6">
             <p className="pill-chip">{t("onboardingFlow")}</p>
             <h1 className="mt-4 text-3xl font-extrabold tracking-tight">{stepTitleMap[currentStep]}</h1>
@@ -133,7 +134,7 @@ const OnboardingPage = () => {
             {currentStep === "basic" ? (
               <>
                 <input className="field-input" value={formData.fullName || ""} onChange={(e) => updateField("fullName", e.target.value)} placeholder={t("fullName")} />
-                <input className="field-input" value={formData.email || ""} onChange={(e) => updateField("email", e.target.value)} placeholder={t("email")} />
+                <input className="field-input" value={formData.email || ""} onChange={(e) => updateField("email", e.target.value)} placeholder={t("email")} disabled={onboarding?.emailVerified} />
                 <input className="field-input" type="date" value={formData.dateOfBirth || ""} onChange={(e) => updateField("dateOfBirth", e.target.value)} />
                 <select className="field-input" value={formData.gender || ""} onChange={(e) => updateField("gender", e.target.value)}>
                   <option value="">{t("gender")}</option>
@@ -218,7 +219,7 @@ const OnboardingPage = () => {
           </div>
         </div>
       </div>
-    </div>
+    </PageTransition>
   );
 };
 

@@ -26,6 +26,15 @@ const userSchema = new mongoose.Schema(
       trim: true,
       lowercase: true,
       default: "",
+      index: true,
+    },
+    emailVerified: {
+      type: Boolean,
+      default: false,
+    },
+    emailVerifiedAt: {
+      type: Date,
+      default: null,
     },
     dateOfBirth: {
       type: String,
@@ -82,6 +91,12 @@ const userSchema = new mongoose.Schema(
     avatarColor: {
       type: String,
       default: "#14b8a6",
+    },
+    role: {
+      type: String,
+      enum: ["USER", "ADMIN"],
+      default: "USER",
+      index: true,
     },
     kycStatus: {
       type: String,
